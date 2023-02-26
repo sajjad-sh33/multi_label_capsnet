@@ -128,7 +128,7 @@ class Decoder(nn.Module):
    
 class Decoder1(nn.Module):
     def __init__(self, input_width=28, input_height=28, input_channel=1, multi=False):
-        super(Decoder, self).__init__()
+        super(Decoder1, self).__init__()
         self.input_width = input_width
         self.input_height = input_height
         self.input_channel = input_channel
@@ -172,7 +172,7 @@ class Decoder1(nn.Module):
 
 class Decoder2(nn.Module):
     def __init__(self, input_width=28, input_height=28, input_channel=1, multi=False):
-        super(Decoder, self).__init__()
+        super(Decoder2, self).__init__()
         self.input_width = input_width
         self.input_height = input_height
         self.input_channel = input_channel
