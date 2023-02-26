@@ -120,9 +120,13 @@ class Decoder(nn.Module):
             masked_cap1 = masked.index_select(dim=0, index=Variable(max_length_indices[:,1].data))
             t1 = (x * masked_cap1[:, :, None, None]).view(x.size(0), -1)
             masked = torch.add(masked_cap0, masked_cap1)
-            reconstructions = self.reconstruction_layers(t1)
+            reconstructions = torch.add(self.reconstruction_layers(t0), self.reconstruction_layers(t1))
+            reconstructions1 = self.reconstruction_layers(t0)
+            reconstructions2 = self.reconstruction_layers(t1)
         reconstructions = reconstructions.view(-1, self.input_channel, self.input_width, self.input_height)
-        return reconstructions, masked
+        reconstructions1 = reconstructions1.view(-1, self.input_channel, self.input_width, self.input_height)
+        reconstructions2 = reconstructions2.view(-1, self.input_channel, self.input_width, self.input_height)
+        return reconstructions, reconstructions1, reconstructions2, masked
 
 
 
@@ -146,8 +150,8 @@ class CapsNet(nn.Module):
 
     def forward(self, data):
         output, self.routing_in, self.routing_out = self.digit_capsules(self.primary_capsules(self.conv_layer(data)))
-        reconstructions, masked = self.decoder(output, data)
-        return output, reconstructions, masked
+        reconstructions,reconstructions1,reconstructions2, masked = self.decoder(output, data)
+        return output, reconstructions,reconstructions1 ,reconstructions2, masked
 
     def loss(self, data, x, target, reconstructions):
         return self.margin_loss(x, target) + self.reconstruction_loss(data, reconstructions)
