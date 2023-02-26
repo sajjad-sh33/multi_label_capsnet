@@ -120,11 +120,101 @@ class Decoder(nn.Module):
             masked_cap1 = masked.index_select(dim=0, index=Variable(max_length_indices[:,1].data))
             t1 = (x * masked_cap1[:, :, None, None]).view(x.size(0), -1)
             masked = torch.add(masked_cap0, masked_cap1)
-            reconstructions = self.reconstruction_layers(t0)
+            reconstructions = torch.add(self.reconstruction_layers(t0), self.reconstruction_layers(t1))
         reconstructions = reconstructions.view(-1, self.input_channel, self.input_width, self.input_height)
         return reconstructions, masked
 
 
+   
+class Decoder1(nn.Module):
+    def __init__(self, input_width=28, input_height=28, input_channel=1, multi=False):
+        super(Decoder, self).__init__()
+        self.input_width = input_width
+        self.input_height = input_height
+        self.input_channel = input_channel
+        self.reconstruction_layers = nn.Sequential(
+            nn.Linear(16 * 10, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, self.input_height * self.input_height * self.input_channel),
+            nn.Sigmoid()
+        )
+        self.multi = multi
+
+    def forward(self, x, data):
+        classes = torch.sqrt((x ** 2).sum(2))
+        classes = F.softmax(classes, dim=0)
+
+        if not self.multi:
+            _, max_length_indices = classes.max(dim=1)
+            max_length_indices = max_length_indices.squeeze()
+            masked = Variable(torch.sparse.torch.eye(10))
+            if USE_CUDA:
+                masked = masked.cuda()
+            masked = masked.index_select(dim=0, index=Variable(max_length_indices.data))
+            t = (x * masked[:, :, None, None]).view(x.size(0), -1)
+            reconstructions = self.reconstruction_layers(t)
+        else:
+            _, max_length_indices = torch.topk(classes, 2, dim=1)
+            max_length_indices = max_length_indices.squeeze()
+            masked = Variable(torch.sparse.torch.eye(10))
+            if USE_CUDA:
+                masked = masked.cuda()
+            masked_cap0 = masked.index_select(dim=0, index=Variable(max_length_indices[:,0].data))
+            t0 = (x * masked_cap0[:, :, None, None]).view(x.size(0), -1)
+            masked_cap1 = masked.index_select(dim=0, index=Variable(max_length_indices[:,1].data))
+            t1 = (x * masked_cap1[:, :, None, None]).view(x.size(0), -1)
+            masked = torch.add(masked_cap0, masked_cap1)
+            reconstructions = self.reconstruction_layers(t1)
+        reconstructions = reconstructions.view(-1, self.input_channel, self.input_width, self.input_height)
+        return reconstructions, masked
+
+class Decoder2(nn.Module):
+    def __init__(self, input_width=28, input_height=28, input_channel=1, multi=False):
+        super(Decoder, self).__init__()
+        self.input_width = input_width
+        self.input_height = input_height
+        self.input_channel = input_channel
+        self.reconstruction_layers = nn.Sequential(
+            nn.Linear(16 * 10, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, self.input_height * self.input_height * self.input_channel),
+            nn.Sigmoid()
+        )
+        self.multi = multi
+
+    def forward(self, x, data):
+        classes = torch.sqrt((x ** 2).sum(2))
+        classes = F.softmax(classes, dim=0)
+
+        if not self.multi:
+            _, max_length_indices = classes.max(dim=1)
+            max_length_indices = max_length_indices.squeeze()
+            masked = Variable(torch.sparse.torch.eye(10))
+            if USE_CUDA:
+                masked = masked.cuda()
+            masked = masked.index_select(dim=0, index=Variable(max_length_indices.data))
+            t = (x * masked[:, :, None, None]).view(x.size(0), -1)
+            reconstructions = self.reconstruction_layers(t)
+        else:
+            _, max_length_indices = torch.topk(classes, 2, dim=1)
+            max_length_indices = max_length_indices.squeeze()
+            masked = Variable(torch.sparse.torch.eye(10))
+            if USE_CUDA:
+                masked = masked.cuda()
+            masked_cap0 = masked.index_select(dim=0, index=Variable(max_length_indices[:,0].data))
+            t0 = (x * masked_cap0[:, :, None, None]).view(x.size(0), -1)
+            masked_cap1 = masked.index_select(dim=0, index=Variable(max_length_indices[:,1].data))
+            t1 = (x * masked_cap1[:, :, None, None]).view(x.size(0), -1)
+            masked = torch.add(masked_cap0, masked_cap1)
+            reconstructions = self.reconstruction_layers(t0)
+        reconstructions = reconstructions.view(-1, self.input_channel, self.input_width, self.input_height)
+        return reconstructions, masked
+    
+    
 
 class CapsNet(nn.Module):
     def __init__(self, config=None, multi=False, iter_n=3):
@@ -148,6 +238,19 @@ class CapsNet(nn.Module):
         output, self.routing_in, self.routing_out = self.digit_capsules(self.primary_capsules(self.conv_layer(data)))
         reconstructions, masked = self.decoder(output, data)
         return output, reconstructions, masked
+    
+    def forward1(self, data):
+        output, self.routing_in, self.routing_out = self.digit_capsules(self.primary_capsules(self.conv_layer(data)))
+        reconstructions, masked = self.decoder1(output, data)
+        return output, reconstructions, masked
+    
+    def forward2(self, data):
+        output, self.routing_in, self.routing_out = self.digit_capsules(self.primary_capsules(self.conv_layer(data)))
+        reconstructions, masked = self.decoder2(output, data)
+        return output, reconstructions, masked
+    
+    
+    
 
     def loss(self, data, x, target, reconstructions):
         return self.margin_loss(x, target) + self.reconstruction_loss(data, reconstructions)
