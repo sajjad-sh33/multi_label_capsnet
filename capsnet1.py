@@ -226,11 +226,15 @@ class CapsNet(nn.Module):
             self.digit_capsules = DigitCaps(config.dc_num_capsules, config.dc_num_routes, config.dc_in_channels,
                                             config.dc_out_channels, iter_n=iter_n)
             self.decoder = Decoder(config.input_width, config.input_height, config.cnn_in_channels, multi=multi)
+            self.decoder1 = Decoder1(config.input_width, config.input_height, config.cnn_in_channels, multi=multi)
+            self.decoder2 = Decoder2(config.input_width, config.input_height, config.cnn_in_channels, multi=multi)
         else:
             self.conv_layer = ConvLayer()
             self.primary_capsules = PrimaryCaps()
             self.digit_capsules = DigitCaps()
             self.decoder = Decoder()
+            self.decoder1 = Decoder1()
+            self.decoder2 = Decoder2()
 
         self.mse_loss = nn.MSELoss()
 
